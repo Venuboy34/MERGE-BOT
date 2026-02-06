@@ -91,26 +91,9 @@ async def loginHandler(c: Client, m: Message):
     if user.banned:
         await m.reply_text(text=f"**Banned User Detected!**\n  🛡️ Unfortunately you can't use me\n\nContact: 🈲 @{Config.OWNER_USERNAME}", quote=True)
         return
-    if user.user_id == int(Config.OWNER):
-        user.allowed = True
-    if user.allowed:
-        await m.reply_text(text=f"**Dont Spam**\n  ⚡ You can use me!!", quote=True)
-    else:
-        try:
-            passwd = m.text.split(" ", 1)[1]
-        except:
-            await m.reply_text("**Command:**\n  `/login <password>`\n\n**Usage:**\n  `password`: Get the password from owner",quote=True,parse_mode=enums.parse_mode.ParseMode.MARKDOWN)
-        passwd = passwd.strip()
-        if passwd == Config.PASSWORD:
-            user.allowed = True
-            await m.reply_text(
-                text=f"**Login passed ✅,**\n  ⚡ Now you can use me!!", quote=True
-            )
-        else:
-            await m.reply_text(
-                text=f"**Login failed ❌,**\n  🛡️ Unfortunately you can't use me\n\nContact: 🈲 @{Config.OWNER_USERNAME}",
-                quote=True,
-            )
+    # Auto-allow all users
+    user.allowed = True
+    await m.reply_text(text=f"**Welcome!**\n  ⚡ You can use me!!", quote=True)
     user.set()
     del user
     return
@@ -193,16 +176,18 @@ async def broadcast_handler(c: Client, m: Message):
 async def start_handler(c: Client, m: Message):
     user = UserSettings(m.from_user.id, m.from_user.first_name)
 
-    if m.from_user.id != int(Config.OWNER):
-        if user.allowed is False:
-            res = await m.reply_text(
-                text=f"Hi **{m.from_user.first_name}**\n\n 🛡️ Unfortunately you can't use me\n\n**Contact: 🈲 @{Config.OWNER_USERNAME}** ",
-                quote=True,
-            )
-            return
-    else:
-        user.allowed = True
-        user.set()
+    # Auto-allow all users except banned ones
+    if user.banned:
+        res = await m.reply_text(
+            text=f"Hi **{m.from_user.first_name}**\n\n 🛡️ Unfortunately you can't use me (you are banned)\n\n**Contact: 🈲 @{Config.OWNER_USERNAME}** ",
+            quote=True,
+        )
+        return
+    
+    # Allow everyone
+    user.allowed = True
+    user.set()
+    
     res = await m.reply_text(
         text=f"Hi **{m.from_user.first_name}**\n\n ⚡ I am a file/video merger bot\n\n😎 I can merge Telegram files!, And upload it to telegram\n\n**Owner: 🈲 @{Config.OWNER_USERNAME}** ",
         quote=True,
@@ -216,13 +201,19 @@ async def start_handler(c: Client, m: Message):
 async def files_handler(c: Client, m: Message):
     user_id = m.from_user.id
     user = UserSettings(user_id, m.from_user.first_name)
-    if user_id != int(Config.OWNER):
-        if user.allowed is False:
-            res = await m.reply_text(
-                text=f"Hi **{m.from_user.first_name}**\n\n 🛡️ Unfortunately you can't use me\n\n**Contact: 🈲 @{Config.OWNER_USERNAME}** ",
-                quote=True,
-            )
-            return
+    
+    # Check if banned
+    if user.banned:
+        res = await m.reply_text(
+            text=f"Hi **{m.from_user.first_name}**\n\n 🛡️ Unfortunately you can't use me (you are banned)\n\n**Contact: 🈲 @{Config.OWNER_USERNAME}** ",
+            quote=True,
+        )
+        return
+    
+    # Auto-allow all users
+    user.allowed = True
+    user.set()
+    
     if user.merge_mode == 4: # extract_mode
         return
     input_ = f"downloads/{str(user_id)}/input.txt"
@@ -396,14 +387,20 @@ async def files_handler(c: Client, m: Message):
 @mergeApp.on_message(filters.photo & filters.private)
 async def photo_handler(c: Client, m: Message):
     user = UserSettings(m.chat.id, m.from_user.first_name)
-    # if m.from_user.id != int(Config.OWNER):
-    if not user.allowed:
+    
+    # Check if banned
+    if user.banned:
         res = await m.reply_text(
-            text=f"Hi **{m.from_user.first_name}**\n\n 🛡️ Unfortunately you can't use me\n\n**Contact: 🈲 @{Config.OWNER_USERNAME}** ",
+            text=f"Hi **{m.from_user.first_name}**\n\n 🛡️ Unfortunately you can't use me (you are banned)\n\n**Contact: 🈲 @{Config.OWNER_USERNAME}** ",
             quote=True,
         )
         del user
         return
+    
+    # Auto-allow all users
+    user.allowed = True
+    user.set()
+    
     thumbnail = m.photo.file_id
     msg = await m.reply_text("Saving Thumbnail. . . .", quote=True)
     user.thumbnail = thumbnail
@@ -418,8 +415,19 @@ async def photo_handler(c: Client, m: Message):
 @mergeApp.on_message(filters.command(["extract"]) & filters.private)
 async def media_extracter(c: Client, m: Message):
     user = UserSettings(uid=m.from_user.id, name=m.from_user.first_name)
-    if not user.allowed:
+    
+    # Check if banned
+    if user.banned:
+        await m.reply_text(
+            text=f"Hi **{m.from_user.first_name}**\n\n 🛡️ Unfortunately you can't use me (you are banned)\n\n**Contact: 🈲 @{Config.OWNER_USERNAME}** ",
+            quote=True,
+        )
         return
+    
+    # Auto-allow all users
+    user.allowed = True
+    user.set()
+    
     if user.merge_mode == 4:
         if m.reply_to_message is None:
             await m.reply(text="Reply /extract to a video or document file")
